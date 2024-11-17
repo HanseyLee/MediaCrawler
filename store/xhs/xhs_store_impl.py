@@ -22,6 +22,7 @@ from typing import Dict
 
 import aiofiles
 
+from cache.redis_mine import MyRedisCache
 import config
 from base.base_crawler import AbstractStore
 from tools import utils, words
@@ -179,6 +180,8 @@ class XhsJsonStoreImplement(AbstractStore):
     file_count:int=calculate_number_of_files(json_store_path)
     WordCloud = words.AsyncWordCloudGenerator()
 
+    redis_mine = MyRedisCache()
+
     def make_save_file_name(self, store_type: str) -> (str,str):
         """
         make save file name by store type
@@ -223,6 +226,11 @@ class XhsJsonStoreImplement(AbstractStore):
                     await self.WordCloud.generate_word_frequency_and_cloud(save_data, words_file_name_prefix)
                 except:
                     pass
+
+            ## store item note_id to redis_mine cache
+            xhs_key_pattern = "xhs_note:"
+            self.redis_mine.set(f"{xhs_key_pattern}{save_item.get('note_id')}", json.dumps(save_item,ensure_ascii=False))
+
     async def store_content(self, content_item: Dict):
         """
         content JSON storage implementation

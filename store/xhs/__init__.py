@@ -13,6 +13,7 @@
 # @Author  : relakkes@gmail.com
 # @Time    : 2024/1/14 17:34
 # @Desc    :
+import datetime
 from typing import List
 
 import config
@@ -77,38 +78,45 @@ async def update_xhs_note(note_item: Dict):
     note_id = note_item.get("note_id")
     user_info = note_item.get("user", {})
     interact_info = note_item.get("interact_info", {})
-    image_list: List[Dict] = note_item.get("image_list", [])
+    # image_list: List[Dict] = note_item.get("image_list", [])
     tag_list: List[Dict] = note_item.get("tag_list", [])
 
-    for img in image_list:
-        if img.get('url_default') != '':
-            img.update({'url': img.get('url_default')})
+    # for img in image_list:
+    #     if img.get('url_default') != '':
+    #         img.update({'url': img.get('url_default')})
 
-    video_url = ','.join(get_video_url_arr(note_item))
+    # video_url = ','.join(get_video_url_arr(note_item))
 
     local_db_item = {
+        "source_keyword": source_keyword_var.get(),
         "note_id": note_item.get("note_id"),
         "type": note_item.get("type"),
         "title": note_item.get("title") or note_item.get("desc", "")[:255],
         "desc": note_item.get("desc", ""),
-        "video_url": video_url,
+        # "video_url": video_url,
         "time": note_item.get("time"),
         "last_update_time": note_item.get("last_update_time", 0),
+        # convert milliseconds time and last_update_time to yyyy-mm-dd hh:mm:ss string format
+        "time_readable": datetime.datetime.fromtimestamp(note_item.get("time") / 1000.0).strftime('%Y-%m-%d %H:%M:%S'),
+        "last_update_time_readable": datetime.datetime.fromtimestamp(note_item.get("last_update_time") / 1000.0).strftime('%Y-%m-%d %H:%M:%S'),
+
+
         "user_id": user_info.get("user_id"),
         "nickname": user_info.get("nickname"),
-        "avatar": user_info.get("avatar"),
+        # "avatar": user_info.get("avatar"),
         "liked_count": interact_info.get("liked_count"),
         "collected_count": interact_info.get("collected_count"),
         "comment_count": interact_info.get("comment_count"),
         "share_count": interact_info.get("share_count"),
         "ip_location": note_item.get("ip_location", ""),
-        "image_list": ','.join([img.get('url', '') for img in image_list]),
+        # "image_list": ','.join([img.get('url', '') for img in image_list]),
         "tag_list": ','.join([tag.get('name', '') for tag in tag_list if tag.get('type') == 'topic']),
-        "last_modify_ts": utils.get_current_timestamp(),
+        # get current date
+        "crawl_date": datetime.datetime.now().strftime('%Y-%m-%d'),
         "note_url": f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={note_item.get('xsec_token')}&xsec_source=pc_search",
-        "source_keyword": source_keyword_var.get(),
+        
     }
-    utils.logger.info(f"[store.xhs.update_xhs_note] xhs note: {local_db_item}")
+    # utils.logger.info(f"[store.xhs.update_xhs_note] xhs note: {local_db_item}")
     await XhsStoreFactory.create_store().store_content(local_db_item)
 
 

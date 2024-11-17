@@ -15,6 +15,7 @@ import random
 from asyncio import Task
 from typing import Dict, List, Optional, Tuple
 
+from cache.redis_mine import MyRedisCache
 from playwright.async_api import (BrowserContext, BrowserType, Page,
                                   async_playwright)
 from tenacity import RetryError
@@ -44,6 +45,8 @@ class XiaoHongShuCrawler(AbstractCrawler):
         self.index_url = "https://www.xiaohongshu.com"
         # self.user_agent = utils.get_user_agent()
         self.user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        self.redis_mine = MyRedisCache()
+
 
     async def start(self) -> None:
         playwright_proxy_format, httpx_proxy_format = None, None
@@ -113,6 +116,8 @@ class XiaoHongShuCrawler(AbstractCrawler):
             utils.logger.info(f"[XiaoHongShuCrawler.search] Current search keyword: {keyword}")
             page = 1
             search_id = get_search_id()
+            utils.logger.info(f"[XiaoHongShuCrawler.search] Current search search_id: {search_id}")
+            
             while (page - start_page + 1) * xhs_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:
                 if page < start_page:
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Skip page {page}")
@@ -128,10 +133,23 @@ class XiaoHongShuCrawler(AbstractCrawler):
                         page=page,
                         sort=SearchSortType(config.SORT_TYPE) if config.SORT_TYPE != '' else SearchSortType.GENERAL,
                     )
-                    utils.logger.info(f"[XiaoHongShuCrawler.search] Search notes res:{notes_res}")
+
+                    # utils.logger.info(f"[XiaoHongShuCrawler.search] Search notes res:{notes_res}")
                     if not notes_res or not notes_res.get('has_more', False):
                         utils.logger.info("No more content!")
                         break
+
+                    ## remove items existing in redis_mine from notes_res
+                    items = notes_res.get("items", [])
+                    # log length of items before removing
+                    items_len_before = len(items)
+                    xhs_key_pattern = "xhs_note:"
+                    notes_res["items"] = [item for item in items if not self.redis_mine.is_exists(f"{xhs_key_pattern}{item.get('id')}")]
+                    # log length of items after removing
+                    items_len_after = len(notes_res["items"])
+                    utils.logger.info(f"[XiaoHongShuCrawler.search] Get {items_len_after} items from notes_res, remove {items_len_before - items_len_after} items from notes_res")
+                    
+
                     semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
                     task_list = [
                         self.get_note_detail_async_task(
@@ -147,14 +165,24 @@ class XiaoHongShuCrawler(AbstractCrawler):
                     for note_detail in note_details:
                         if note_detail:
                             await xhs_store.update_xhs_note(note_detail)
-                            await self.get_notice_media(note_detail)
+                            ## medida not required
+                            # await self.get_notice_media(note_detail)
                             note_id_list.append(note_detail.get("note_id"))
                     page += 1
-                    utils.logger.info(f"[XiaoHongShuCrawler.search] Note details: {note_details}")
-                    await self.batch_get_note_comments(note_id_list)
+                    # utils.logger.info(f"[XiaoHongShuCrawler.search] Note details: {note_details}")
+
+                    ## comments not required 
+                    # await self.batch_get_note_comments(note_id_list)
+
+
+                    # add random delay, seconds between 1 and 10
+                    random_delay = random.randint(1, 10)
+                    utils.logger.info(f"[XiaoHongShuCrawler.search] Add random delay: {random_delay} seconds")
+                    await asyncio.sleep(random_delay)
                 except DataFetchError:
                     utils.logger.error("[XiaoHongShuCrawler.search] Get note detail error")
                     break
+
 
     async def get_creators_and_notes(self) -> None:
         """Get creator's notes and retrieve their comment information."""

@@ -217,6 +217,7 @@ class XiaoHongShuClient(AbstractApiClient):
             "sort": sort.value,
             "note_type": note_type.value
         }
+        utils.logger.info(f"[XiaoHongShuClient.get_note_by_keyword] Search data:{data}")
         return await self.post(uri, data)
 
     async def get_note_by_id(self, note_id: str, xsec_source: str, xsec_token: str) -> Dict:
@@ -524,6 +525,8 @@ class XiaoHongShuClient(AbstractApiClient):
             utils.logger.info(
                 f"[XiaoHongShuClient.get_note_by_id_from_html] 出现验证码: {href}, 请手动验证"
             )
+            await asyncio.sleep(10)
+
             await self.playwright_page.goto(href)
             # 等待用户完成操作页面重定向
             if await self.check_redirect():
@@ -532,7 +535,12 @@ class XiaoHongShuClient(AbstractApiClient):
                 )
                 
                 html = await self.playwright_page.content()
-                return get_note_dict(html)
+                # return get_note_dict(html)
+                try:
+                    return get_note_dict(html)
+                except IndexError:
+                    utils.logger.error("[XiaoHongShuClient.get_note_by_id_from_html] Finally fail to get note, return empty dict")
+                    return {}
             else:
                 raise DataFetchError(html)
 
