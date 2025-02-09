@@ -12,8 +12,8 @@
 # 基础配置
 PLATFORM = "xhs"
 KEYWORDS = "手机依赖" # 关键词搜索配置，以英文逗号分隔
-LOGIN_TYPE = "cookie"  # qrcode or phone or cookie
-COOKIES = "abRequestId=4cea4b33-2f43-540a-8773-b37be6e837a0; webBuild=4.43.0; a1=19332b76b80ewolhjlub2frmnn4fa3x0iuym4rce730000684741; webId=532c87be703db6292deb4b4e25ca6dbd; gid=yjqqJDWW4y3yyjqqJDWKD7FSY8dEl1xV17DJvdWiF6II46q8i0qC84888KY4W4y8WdfdyjDj; xsecappid=xhs-pc-web; acw_tc=0a4ae09717318483613725952e1a523424d9934a433047600220121c8052f8; websectiga=cffd9dcea65962b05ab048ac76962acee933d26157113bb213105a116241fa6c; sec_poison_id=b5874125-9f38-4772-bf41-f49e31268039; web_session=0400698e11932b56eec48fa50c354b41d0bc88; unread={%22ub%22:%2267369b08000000001b02bf9f%22%2C%22ue%22:%226714e36300000000160216f4%22%2C%22uc%22:28}"
+LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
+COOKIES = ""
 # 具体值参见media_platform.xxx.field下的枚举值，暂时只支持小红书
 # SORT_TYPE = "popularity_descending"
 SORT_TYPE = ""
@@ -22,10 +22,11 @@ PUBLISH_TIME_TYPE = 0
 CRAWLER_TYPE = "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 
 # 是否开启 IP 代理
+# ENABLE_IP_PROXY = True
 ENABLE_IP_PROXY = False
 
 # 代理IP池数量
-IP_PROXY_POOL_COUNT = 2
+IP_PROXY_POOL_COUNT = 50
 
 # 代理IP提供商名称
 IP_PROXY_PROVIDER_NAME = "kuaidaili"
@@ -34,6 +35,7 @@ IP_PROXY_PROVIDER_NAME = "kuaidaili"
 # 设置False会打开一个浏览器
 # 小红书如果一直扫码登录不通过，打开浏览器手动过一下滑动验证码
 # 抖音如果一直提示失败，打开浏览器看下是否扫码登录之后出现了手机号验证，如果出现了手动过一下再试。
+# HEADLESS = True
 HEADLESS = False
 
 # 是否保存登录状态

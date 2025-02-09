@@ -193,8 +193,8 @@ class XhsJsonStoreImplement(AbstractStore):
         """
 
         return (
-            f"{self.json_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json",
-            f"{self.words_store_path}/{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}"
+            f"{self.json_store_path}/{config.KEYWORDS}-{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}.json",
+            f"{self.words_store_path}/{config.KEYWORDS}-{crawler_type_var.get()}_{store_type}_{utils.get_current_date()}"
         )
 
     async def save_data_to_json(self, save_item: Dict, store_type: str):

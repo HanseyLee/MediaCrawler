@@ -10,6 +10,7 @@
 
 
 import asyncio
+import json
 import os
 import random
 from asyncio import Task
@@ -117,7 +118,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
             page = 1
             search_id = get_search_id()
             utils.logger.info(f"[XiaoHongShuCrawler.search] Current search search_id: {search_id}")
-            
+
             while (page - start_page + 1) * xhs_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:
                 if page < start_page:
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Skip page {page}")
@@ -140,15 +141,20 @@ class XiaoHongShuCrawler(AbstractCrawler):
                         break
 
                     ## remove items existing in redis_mine from notes_res
-                    items = notes_res.get("items", [])
-                    # log length of items before removing
-                    items_len_before = len(items)
-                    xhs_key_pattern = "xhs_note:"
-                    notes_res["items"] = [item for item in items if not self.redis_mine.is_exists(f"{xhs_key_pattern}{item.get('id')}")]
-                    # log length of items after removing
-                    items_len_after = len(notes_res["items"])
-                    utils.logger.info(f"[XiaoHongShuCrawler.search] Get {items_len_after} items from notes_res, remove {items_len_before - items_len_after} items from notes_res")
+                    # items = notes_res.get("items", [])
+                    # # log length of items before removing
+                    # items_len_before = len(items)
+                    # xhs_key_pattern = "xhs_note:"
+                    # notes_res["items"] = [item for item in items if not self.redis_mine.is_exists(f"{xhs_key_pattern}{item.get('id')}")]
+                    # # log length of items after removing
+                    # items_len_after = len(notes_res["items"])
+                    # utils.logger.info(f"[XiaoHongShuCrawler.search] Get {items_len_after} items from notes_res, remove {items_len_before - items_len_after} items from notes_res")
                     
+                    ## instead of removing items existing in redis_mine, we just get note detail by note_id
+                    ## log length of items before getting note detail
+                    items_len_before = len(notes_res.get("items", []))
+                    utils.logger.info(f"[XiaoHongShuCrawler.search] Get {items_len_before} items before getting note detail")
+
 
                     semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
                     task_list = [
@@ -176,7 +182,7 @@ class XiaoHongShuCrawler(AbstractCrawler):
 
 
                     # add random delay, seconds between 1 and 10
-                    random_delay = random.randint(1, 10)
+                    random_delay = random.randint(1, 5)
                     utils.logger.info(f"[XiaoHongShuCrawler.search] Add random delay: {random_delay} seconds")
                     await asyncio.sleep(random_delay)
                 except DataFetchError:
@@ -256,6 +262,13 @@ class XiaoHongShuCrawler(AbstractCrawler):
         """Get note detail"""
         async with semaphore:
             try:
+                ## if note already in redis_mine, return directly
+                if self.redis_mine.is_exists(f"xhs_note:{note_id}"):
+                    utils.logger.info(f"[XiaoHongShuCrawler.get_note_detail_async_task] {note_id} already existing!")
+                    note_detail = json.loads(self.redis_mine.get(f"xhs_note:{note_id}"))
+                    return note_detail
+
+
                 note_detail: Dict = await self.xhs_client.get_note_by_id_from_html(note_id, xsec_source, xsec_token)
                 # note_detail: Dict = await self.xhs_client.get_note_by_id(note_id, xsec_source, xsec_token)
                 if not note_detail:
@@ -266,7 +279,10 @@ class XiaoHongShuCrawler(AbstractCrawler):
                 return note_detail
             except DataFetchError as ex:
                 utils.logger.error(f"[XiaoHongShuCrawler.get_note_detail_async_task] Get note detail error: {ex}")
-                return None
+                ## try get note detail by note_id
+                utils.logger.info(f"[XiaoHongShuCrawler.get_note_detail_async_task] Try get note detail by note_id: {note_id}")
+                note_detail: Dict = await self.xhs_client.get_note_by_id(note_id, xsec_source, xsec_token)
+                return note_detail
             except KeyError as ex:
                 utils.logger.error(
                     f"[XiaoHongShuCrawler.get_note_detail_async_task] have not fund note detail note_id:{note_id}, err: {ex}")

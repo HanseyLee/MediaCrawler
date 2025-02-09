@@ -38,6 +38,7 @@ class XhsStoreFactory:
             raise ValueError("[XhsStoreFactory.create_store] Invalid save option only supported csv or db or json ...")
         return store_class()
 
+redis_mine = MyRedisCache()
 
 def get_video_url_arr(note_item: Dict) -> List:
     """
@@ -76,6 +77,14 @@ async def update_xhs_note(note_item: Dict):
 
     """
     note_id = note_item.get("note_id")
+
+    ## if note already in redis_mine, store its content directly
+    if redis_mine.is_exists(f"xhs_note:{note_id}"):
+        utils.logger.info(f"[store.xhs.update_xhs_note] {note_id} already existing, store content directly")
+        await XhsStoreFactory.create_store().store_content(note_item)
+        return
+
+    
     user_info = note_item.get("user", {})
     interact_info = note_item.get("interact_info", {})
     # image_list: List[Dict] = note_item.get("image_list", [])
